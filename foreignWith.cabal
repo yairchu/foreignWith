@@ -1,0 +1,16 @@
+Name:                foreignWith
+Version:             0.0
+Synopsis:            versions of withForeignPtr and such for MonadIO
+License:             GPL
+Author:              Yair Chuchem
+Maintainer:          yairchu@gmail.com
+Cabal-Version:       >= 1.2
+Stability:           experiemental
+Build-type:          Simple
+
+Library
+  hs-Source-Dirs:      src
+  Extensions:
+  Build-Depends:       base, haskell98, mtl
+  Exposed-modules:     Foreign.With
+  ghc-options:         -Wall

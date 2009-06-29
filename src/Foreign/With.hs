@@ -1,11 +1,13 @@
+{-# OPTIONS -O2 -Wall #-}
+
 module Foreign.With (
   alloca, allocaArray, withForeignPtr
   ) where
 
 import Control.Monad.Trans (MonadIO(..))
 import Foreign.ForeignPtr (
-  ForeignPtr, touchForeignPtr, unsafeForeignPtrToPtr)
-import Foreign.Marshal.Alloc (free, malloc)
+  ForeignPtr, newForeignPtr, touchForeignPtr, unsafeForeignPtrToPtr)
+import Foreign.Marshal.Alloc (finalizerFree, malloc)
 import Foreign.Marshal.Array (mallocArray)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable)
@@ -18,17 +20,14 @@ withForeignPtr fptr func = do
 
 alloca :: (MonadIO m, Storable a) => (Ptr a -> m b) -> m b
 alloca func = do
-  p <- liftIO malloc
-  r <- func p
-  liftIO $ free p
-  return r
+  fptr <- liftIO $ newForeignPtr finalizerFree =<< malloc
+  withForeignPtr fptr func
 
 allocaArray ::
   (MonadIO m, Storable a, Integral i) =>
   i -> (Ptr a -> m b) -> m b
 allocaArray size func = do
-  p <- liftIO . mallocArray $ fromIntegral size
-  r <- func p
-  liftIO $ free p
-  return r
+  fptr <- liftIO $ newForeignPtr finalizerFree =<<
+    mallocArray (fromIntegral size)
+  withForeignPtr fptr func
 

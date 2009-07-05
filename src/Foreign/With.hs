@@ -1,10 +1,11 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module Foreign.With (
-  alloca, allocaArray, allocaBytes, withForeignPtr
+  alloca, allocaArray, allocaBytes, withCString, withForeignPtr
   ) where
 
 import Control.Monad.Trans (MonadIO(..))
+import Foreign.C.String (CString, newCString)
 import Foreign.ForeignPtr (
   ForeignPtr, newForeignPtr, touchForeignPtr, unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc (finalizerFree, malloc, mallocBytes)
@@ -18,18 +19,21 @@ withForeignPtr fptr func = do
   liftIO $ touchForeignPtr fptr
   return r
 
-alloca' :: MonadIO m => IO (Ptr a) -> (Ptr a -> m b) -> m b
-alloca' mallocFunc func = do
+withFree :: MonadIO m => IO (Ptr a) -> (Ptr a -> m b) -> m b
+withFree mallocFunc func = do
   fptr <- liftIO $ newForeignPtr finalizerFree =<< mallocFunc
   withForeignPtr fptr func
 
+withCString :: MonadIO m => String -> (CString -> m a) -> m a
+withCString = withFree . newCString
+
 alloca :: (MonadIO m, Storable a) => (Ptr a -> m b) -> m b
-alloca = alloca' malloc
+alloca = withFree malloc
 
 allocaArray ::
   (MonadIO m, Storable a, Integral i) => i -> (Ptr a -> m b) -> m b
-allocaArray = alloca' . mallocArray . fromIntegral
+allocaArray = withFree . mallocArray . fromIntegral
 
 allocaBytes :: (MonadIO m, Integral i) => i -> (Ptr a -> m b) -> m b
-allocaBytes = alloca' . mallocBytes . fromIntegral
+allocaBytes = withFree . mallocBytes . fromIntegral
 
